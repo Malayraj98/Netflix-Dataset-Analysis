@@ -1,0 +1,963 @@
+---
+title: "Netflix Dataset Analysis"
+author: "Malay Raj"
+date: "2023-07-07"
+output:
+  word_document: default
+  html_document: default
+  always_allow_html: true
+---
+
+## NETFLIX DATASET ANALYSIS WITH R:
+
+This dataset combines data sources from Netflix, Rotten Tomatoes, IMBD, posters, box office information, trailers on YouTube, and more using a variety of APIs. Note that there is no official Netflix API.
+
+## Loading Required Packages.
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(dplyr)
+library(ggplot2)
+library(skimr)
+library(plyr)
+library(lubridate)
+library(scales)
+library(plotly)
+library(tm)
+library(wordcloud)
+library(treemap)
+```
+
+## Displaying my current working directory.
+
+```{r}
+getwd()
+```
+
+## Collecting the data.
+
+```{r}
+Netflix = read.csv("C:/Netflix Dataset Analysis/netflix-rotten-tomatoes-metacritic-imdb.csv")
+```
+
+## Displaying the first six rows of the dataset.
+
+```{r}
+head(Netflix)
+```
+
+## Checking the number of rows and dimension of the dataset.
+
+```{r}
+dim(Netflix)
+
+nrow(Netflix)
+```
+
+## Displaying the column names of our dataframe.
+
+```{r}
+colnames(Netflix)
+```
+
+## Inspecting the dataframe and look for inconguencies.
+
+```{r}
+str(Netflix)
+```
+
+As we can see that the datatype of released date and netflix released date is in chr so first we will change it into dmy and ymd and then into date.
+
+## Changing the datatypes.
+
+```{r}
+Netflix$Release.Date <- dmy(Netflix$Release.Date)
+
+Netflix$Netflix.Release.Date <- ymd(Netflix$Netflix.Release.Date)
+```
+
+```{r}
+Netflix$Release.Date <- as.Date(Netflix$Release.Date)
+
+Netflix$Netflix.Release.Date <- as.Date(Netflix$Netflix.Release.Date)
+```
+
+## Checking if it's changed or not.
+
+```{r}
+str(Netflix)
+```
+
+## Checking for null values in our dataset.
+
+```{r}
+null_sum <- colSums(is.na(Netflix))
+
+null_sum
+```
+
+## Removing the Metacritic.Score, Summary, Image, Production.House, Netflix.Link, IMDb.Link, Poster, TMDb.Trailer and Trailer.Site because we don't need it in our analysis.
+
+```{r}
+Netflix = subset(Netflix, select = -c(Metacritic.Score, Summary, Image, Production.House, Netflix.Link, IMDb.Link, Poster, TMDb.Trailer, Trailer.Site))
+```
+
+## Checking the column names which are left for analysis.
+
+```{r}
+colnames(Netflix)
+```
+
+## Creating two new columns which are Released_year and Released_Year_Net.
+
+```{r}
+Netflix$Released_Year <- year(as.Date(Netflix$Release.Date))
+
+Netflix$Released_Year_Net <- year(as.Date(Netflix$Netflix.Release.Date))
+```
+
+## Filling the missing values in Hidden.Gem.Score, IMDb.Score, Rotten.Tomatoes.Score, Awards.Received, Awards.Nominated.For, IMDB.Votes with 0.
+
+```{r}
+Netflix$Hidden.Gem.Score <- ifelse(is.na(Netflix$Hidden.Gem.Score), 0, Netflix$Hidden.Gem.Score)
+Netflix$IMDb.Score <- ifelse(is.na(Netflix$IMDb.Score), 0, Netflix$IMDb.Score)
+Netflix$Rotten.Tomatoes.Score <- ifelse(is.na(Netflix$Rotten.Tomatoes.Score), 0, Netflix$Rotten.Tomatoes.Score)
+Netflix$Awards.Received <- ifelse(is.na(Netflix$Awards.Received), 0, Netflix$Awards.Received)
+Netflix$Awards.Nominated.For <- ifelse(is.na(Netflix$Awards.Nominated.For), 0, Netflix$Awards.Nominated.For)
+Netflix$IMDb.Votes <- ifelse(is.na(Netflix$IMDb.Votes), 0, Netflix$IMDb.Votes)
+```
+
+## Checking for the null values in our dataframe which are left after removing few columns.
+
+```{r}
+sum(is.na(Netflix))
+```
+
+As we can see there are still few null values left in few columns but, we are going to remove them later in our analysis.
+
+## Checking for any duplicate values in our dataset.
+
+```{r}
+anyDuplicated(Netflix)
+```
+
+## Seeing how many observations fall under each of these columns.
+
+```{r}
+table(Netflix$Released_Year)
+table(Netflix$Released_Year_Net)
+table(Netflix$Genre)
+table(Netflix$Series.or.Movie)
+```
+
+## CONDUCTNG DESCRIPTIVE ANALYSIS:
+
+Descriptive analysis on few columns.
+
+```{r}
+summary(Netflix$Hidden.Gem.Score)
+```
+
+```{r}
+summary(Netflix$IMDb.Score)
+```
+
+```{r}
+summary(Netflix$Rotten.Tomatoes.Score)
+```
+
+```{r}
+summary(Netflix$IMDb.Votes)
+```
+
+Comparing Hidden.Gem.Score, IMDb.Score, Rotten.Tomatoes.Score and IMDb.Votes with Series.or.Movies.
+
+```{r}
+aggregate(Netflix$Hidden.Gem.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = mean)
+aggregate(Netflix$Hidden.Gem.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = median)
+aggregate(Netflix$Hidden.Gem.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = max)
+aggregate(Netflix$Hidden.Gem.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = min)
+
+```
+
+```{r}
+aggregate(Netflix$IMDb.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = mean)
+aggregate(Netflix$IMDb.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = median)
+aggregate(Netflix$IMDb.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = max)
+aggregate(Netflix$IMDb.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = min)
+```
+
+```{r}
+aggregate(Netflix$Rotten.Tomatoes.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = mean)
+aggregate(Netflix$Rotten.Tomatoes.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = median)
+aggregate(Netflix$Rotten.Tomatoes.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = max)
+aggregate(Netflix$Rotten.Tomatoes.Score ~ Netflix$Series.or.Movie, data = Netflix, FUN = min)
+```
+
+```{r}
+aggregate(Netflix$IMDb.Votes ~ Netflix$Series.or.Movie, data = Netflix, FUN = mean)
+aggregate(Netflix$IMDb.Votes ~ Netflix$Series.or.Movie, data = Netflix, FUN = median)
+aggregate(Netflix$IMDb.Votes ~ Netflix$Series.or.Movie, data = Netflix, FUN = max)
+aggregate(Netflix$IMDb.Votes ~ Netflix$Series.or.Movie, data = Netflix, FUN = min)
+
+```
+
+## SUMMARY STATISTICS.
+
+```{r}
+skimr::skim_without_charts(Netflix)
+```
+
+## Data Visualization:
+
+Let's visualize the count of total series and movies in our dataset.
+
+```{r}
+colors <- rep("black", length = 2)
+colors[1] <- "crimson"
+count <- table(Netflix$Series.or.Movie)
+fig <- plot_ly(data = Netflix, x = ~Series.or.Movie, y = ~count, type = "bar",
+               text = ~count, textposition = "outside", marker = list(color = colors))
+fig <- fig %>% 
+  layout(
+    title = "More Movie️ or TV Series ?",
+    uniformtext = list(minsize = 8, mode = "hide"),
+    barmode = "group",
+    xaxis = list(tickangle = -45, title = "Category", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    annotations = list(
+      text = ~count,
+      x = ~Series.or.Movie,
+      y = ~count,
+      textposition = "outside"
+    )
+  ) 
+fig
+```
+
+We can see there are more series than movies in our dataset.
+
+## We are diving our dataframe into two so we can work and analyze separately.
+
+```{r}
+Netflix_movie <- subset(Netflix, Series.or.Movie  == 'Movie')
+Netflix_movie_head <- head(Netflix_movie, n = 1)
+```
+
+```{r}
+Netflix_series <- subset(Netflix, Series.or.Movie  == 'Series')
+Netflix_series_head <- head(Netflix_series, n = 1)
+```
+
+## Checking the top 10 Series with most amount of Hidden Gem Score.
+
+```{r}
+Netflix_series_hdg <- Netflix_series[!is.na(Netflix_series$Hidden.Gem.Score), ]
+Netflix_series_hdg <- Netflix_series_hdg %>% arrange(desc(Hidden.Gem.Score))
+top_s_10_list <- head(Netflix_series_hdg, 10)
+top_s_10_list <- top_s_10_list %>% select(Title) %>% mutate(row_number = row_number())
+cat('The 10 Best Hidden Gems on Tv Series are:\n')
+cat(paste(top_s_10_list$row_number, top_s_10_list$Title, sep = "\t"))
+```
+
+## Checking the top 10 Movies with most amount of Hidden Gem Score.
+
+```{r}
+Netflix_movie_hdg <- Netflix_movie[!is.na(Netflix_movie$Hidden.Gem.Score), ]
+Netflix_movie_hdg <- Netflix_movie_hdg %>% arrange(desc(Hidden.Gem.Score))
+top_m_10_list <- head(Netflix_movie_hdg, 10)
+top_m_10_list <- top_m_10_list %>% select(Title) %>% mutate(row_number = row_number())
+cat('The 10 Best Hidden Gems on Movies are:\n')
+cat(paste(top_m_10_list$row_number, top_m_10_list$Title, sep = "\t"))
+```
+
+
+## Let's first remove the missing values if there is any from Genre column then let's see which which are the most popular genres in series.
+
+```{r}
+Netflix_series_gen <- na.omit(Netflix_series[!is.na(Netflix_series$Genre), ])
+```
+
+```{r}
+colors_10 <- c('DarkRed', 'FireBrick', 'Red', 'Crimson', 'IndianRed', 'slategray', 'gray', 'dimgrey', 'DarkSlateGrey', 'black')
+series_gen_list <- strsplit(Netflix_series_gen$Genre, ',')
+s_gen_list <- table(unlist(series_gen_list))
+s_gen_df <- data.frame(Genre = names(s_gen_list), Counts_of_Genres_in_Tv_Series = as.numeric(s_gen_list))
+s_gen_df <- s_gen_df[order(s_gen_df$Counts_of_Genres_in_Tv_Series, decreasing = TRUE), ]
+top_10_s_gen <- head(s_gen_df, 10)
+fig <- plot_ly(
+  data = top_10_s_gen,
+  x = ~Genre,
+  y = ~Counts_of_Genres_in_Tv_Series,
+  text = ~Counts_of_Genres_in_Tv_Series,
+  type = 'bar',
+  marker = list(color = colors_10)
+) %>%
+  layout(
+    title = 'Which are the most popular genres in Tv Series?',
+    yaxis = list(title = 'Quantity', titlefont = list(size = 14)),
+    xaxis = list(title = 'Genres', titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = 'hide'),
+    bargap = 0.1
+  )
+fig
+```
+
+## Now let's look at the most popular genres in movies.
+
+```{r}
+Netflix_movie_gen <- na.omit(Netflix_movie[!is.na(Netflix_movie$Genre), ])
+```
+
+```{r}
+colors_10 <- c('DarkRed', 'FireBrick', 'Red', 'Crimson', 'IndianRed', 'slategray', 'gray', 'dimgrey', 'DarkSlateGrey', 'black')
+movie_gen_list <- strsplit(Netflix_movie_gen$Genre, ',')
+m_gen_list <- table(unlist(movie_gen_list))
+m_gen_df <- data.frame(Genre = names(m_gen_list), Counts_of_Genres_in_movies = as.numeric(m_gen_list))
+m_gen_df <- m_gen_df[order(m_gen_df$Counts_of_Genres_in_movies, decreasing = TRUE), ]
+top_10_m_gen <- head(m_gen_df, 10)
+fig <- plot_ly(
+  data = top_10_m_gen,
+  x = ~Genre,
+  y = ~Counts_of_Genres_in_movies,
+  text = ~Counts_of_Genres_in_movies,
+  type = 'bar',
+  marker = list(color = colors_10)
+) %>%
+  layout(
+    title = 'Which are the most popular genres in Movies?',
+    yaxis = list(title = 'Quantity', titlefont = list(size = 14)),
+    xaxis = list(title = 'Genres', titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = 'hide'),
+    bargap = 0.1
+  )
+fig
+```
+
+## Let's see what we can do with tags.
+
+```{r}
+df_series_tag <- na.omit(Netflix_series[Netflix_series$Tags != "", ])
+```
+
+```{r}
+series_tags <- df_series_tag$Tags
+words <- c()
+for (tag in series_tags) {
+  doc <- tolower(tag)
+  doc <- removePunctuation(doc)
+  doc <- removeNumbers(doc)
+  doc <- removeWords(doc, stopwords("english"))
+  words <- c(words, strsplit(doc, "\\s+")[[1]])
+}
+wordcloud_data <- data.frame(words = words)
+wordcloud(wordcloud_data$words, random.order = FALSE, 
+          colors = brewer.pal(8, "Dark2"),
+          max.words = 100, scale=c(3, 0.5),
+          random.color = TRUE)
+```
+
+Similarly we will do for movies.
+
+```{r}
+df_movie_tag <- na.omit(Netflix_movie[Netflix_movie$Tags != "", ])
+```
+
+```{r}
+movie_tags <- df_movie_tag$Tags
+words <- c()
+for (tag in movie_tags) {
+  doc <- tolower(tag)
+  doc <- removePunctuation(doc)
+  doc <- removeNumbers(doc)
+  doc <- removeWords(doc, stopwords("english"))
+  words <- c(words, strsplit(doc, "\\s+")[[1]])
+}
+wordcloud_data <- data.frame(words = words)
+
+wordcloud(wordcloud_data$words, random.order = FALSE, 
+          colors = brewer.pal(8, "Dark2"),
+          max.words = 100, scale=c(3, 0.5),
+          random.color = TRUE)
+
+```
+
+## Let's see which spoken language do we have for series.
+
+```{r}
+Netflix_series_lan <- Netflix_series[!is.na(Netflix_series$Languages), ]
+series_lan_list <- strsplit(Netflix_series_lan$Languages, ", ")
+s_lan_list <- list()
+for (languages in series_lan_list) {
+  for (language in languages) {
+    if (language %in% names(s_lan_list)) {
+      s_lan_list[[language]] <- s_lan_list[[language]] + 1
+    } else {
+      s_lan_list[[language]] <- 1
+    }
+  }
+}
+s_lan_df <- data.frame(
+  language = names(s_lan_list),
+  Counts_of_language = unlist(s_lan_list),
+  stringsAsFactors = FALSE
+)
+top_10_s_lan <- s_lan_df %>%
+  arrange(desc(Counts_of_language)) %>%
+  head(10)
+
+fig <- plot_ly(
+  data = top_10_s_lan,
+  type = "bar",
+  x = ~language,
+  y = ~Counts_of_language,
+  text = ~Counts_of_language,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Top 10 languages in series?",
+    xaxis = list(title = "languages", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+Similartly we will do for movies.
+
+```{r}
+Netflix_movie_lan <- Netflix_movie[!is.na(Netflix_movie$Languages), ]
+movie_lan_list <- strsplit(Netflix_movie_lan$Languages, ", ")
+m_lan_list <- list()
+for (languages in movie_lan_list) {
+  for (language in languages) {
+    if (language %in% names(m_lan_list)) {
+      m_lan_list[[language]] <- m_lan_list[[language]] + 1
+    } else {
+      m_lan_list[[language]] <- 1
+    }
+  }
+}
+m_lan_df <- data.frame(
+  language = names(m_lan_list),
+  Counts_of_language = unlist(m_lan_list),
+  stringsAsFactors = FALSE
+)
+top_10_m_lan <- m_lan_df %>%
+  arrange(desc(Counts_of_language)) %>%
+  head(10)
+
+fig <- plot_ly(
+  data = top_10_m_lan,
+  type = "bar",
+  x = ~language,
+  y = ~Counts_of_language,
+  text = ~Counts_of_language,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Top 10 languages in movies?",
+    xaxis = list(title = "languages", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Now let's see for which countries have a larger availability in series.
+
+```{r}
+Netflix_series_ctr <- Netflix_series[!is.na(Netflix_series$Country.Availability), ]
+series_ctr_list <- strsplit(Netflix_series_ctr$Country.Availability, ", ")
+s_ctr_list <- list()
+for (countries in series_ctr_list) {
+  for (country in countries) {
+    if (country %in% names(s_ctr_list)) {
+      s_ctr_list[[country]] <- s_ctr_list[[country]] + 1
+    } else {
+      s_ctr_list[[country]] <- 1
+    }
+  }
+}
+s_ctr_df <- data.frame(
+  Country = names(s_ctr_list),
+  Counts_of_Country_Availability = unlist(s_ctr_list),
+  stringsAsFactors = FALSE
+)
+top_10_s_ctr <- s_ctr_df %>%
+  arrange(desc(Counts_of_Country_Availability)) %>%
+  head(10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_s_ctr,
+  type = "bar",
+  x = ~Country,
+  y = ~Counts_of_Country_Availability,
+  text = ~Counts_of_Country_Availability,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which countries have a larger Series Availability?",
+    xaxis = list(title = "Countries", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+For movies.
+
+```{r}
+Netflix_movie_lan <- Netflix_movie[!is.na(Netflix_movie$Languages), ]
+movie_lan_list <- strsplit(Netflix_movie_lan$Languages, ", ")
+m_lan_list <- list()
+for (languages in movie_lan_list) {
+  for (language in languages) {
+    if (language %in% names(m_lan_list)) {
+      m_lan_list[[language]] <- m_lan_list[[language]] + 1
+    } else {
+      m_lan_list[[language]] <- 1
+    }
+  }
+}
+m_lan_df <- data.frame(
+  language = names(m_lan_list),
+  Counts_of_language = unlist(m_lan_list),
+  stringsAsFactors = FALSE
+)
+top_10_m_lan <- m_lan_df %>%
+  arrange(desc(Counts_of_language)) %>%
+  head(10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_m_lan,
+  type = "bar",
+  x = ~language,
+  y = ~Counts_of_language,
+  text = ~Counts_of_language,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Top 10 languages in movies?",
+    xaxis = list(title = "languages", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## let's find out what this dataframe teaches us about the duration of the various TV series or films.
+
+```{r}
+Netflix_series_drt <- Netflix_series[!is.na(Netflix_series$Runtime), ]
+runtime_counts <- table(Netflix_series_drt$Runtime)
+runtime_counts
+```
+
+we can see this dataframe telling us that Netflix series episodes are always 30 minutes or less.
+
+```{r}
+Netflix_movie_drt <- Netflix_movie[complete.cases(Netflix_movie$Runtime), ]
+
+
+count_d <- table(Netflix_movie_drt$Runtime)
+df_count <- data.frame(Duration = names(count_d), Count = as.vector(count_d))
+fig <- plot_ly(
+  data = df_count,
+  type = "bar",
+  x = ~Duration,
+  y = ~Count,
+  text = ~Count,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "What is the average duration of a movie on Netflix?",
+    xaxis = list(title = "Duration", titlefont = list(size = 14)),
+    yaxis = list(title = "Quantity", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Let's see Which directors have directed more TV Series.
+
+```{r}
+Netflix_series_dir <- Netflix_series[!is.na(Netflix_series$Director), ]
+
+series_dir_list <- strsplit(Netflix_series_dir$Director, ', ')
+s_dir_list <- list()
+for (directors in series_dir_list) {
+  for (director in directors) {
+    if (director %in% names(s_dir_list)) {
+      s_dir_list[[director]] <- s_dir_list[[director]] + 1
+    } else {
+      s_dir_list[[director]] <- 1
+    }
+  }
+}
+s_dir_df <- data.frame(Director = names(s_dir_list), Director_Counts = unlist(s_dir_list))
+s_dir_df <- s_dir_df[order(s_dir_df$Director_Counts, decreasing = TRUE), ]
+top_10_s_dir <- head(s_dir_df, 10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_s_dir,
+  type = "bar",
+  x = ~Director,
+  y = ~Director_Counts,
+  text = ~Director_Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which directors have directed more TV Series?",
+    xaxis = list(title = "Directors", titlefont = list(size = 14)),
+    yaxis = list(title = "Number of TV Series directed", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+Let's see for movies.
+
+```{r}
+Netflix_movie_dir <- Netflix_movie[!is.na(Netflix_movie$Director), ]
+
+movie_dir_list <- strsplit(Netflix_movie_dir$Director, ', ')
+m_dir_list <- list()
+for (directors in movie_dir_list) {
+  for (director in directors) {
+    if (director %in% names(m_dir_list)) {
+      m_dir_list[[director]] <- m_dir_list[[director]] + 1
+    } else {
+      m_dir_list[[director]] <- 1
+    }
+  }
+}
+m_dir_df <- data.frame(Director = names(m_dir_list), Director_Counts = unlist(m_dir_list))
+m_dir_df <- m_dir_df[order(m_dir_df$Director_Counts, decreasing = TRUE), ]
+top_10_m_dir <- head(m_dir_df, 10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_m_dir,
+  type = "bar",
+  x = ~Director,
+  y = ~Director_Counts,
+  text = ~Director_Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which directors have directed more Movies?",
+    xaxis = list(title = "Directors", titlefont = list(size = 14)),
+    yaxis = list(title = "Number of TV Movies directed", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Now let's see Which actors have played more TV Series.
+
+```{r}
+Netflix_series_act <- Netflix_series[!is.na(Netflix_series$Actors), ]
+
+series_act_list <- strsplit(Netflix_series_act$Actors, ', ')
+s_act_list <- list()
+for (actors in series_act_list) {
+  for (actor in actors) {
+    if (actor %in% names(s_act_list)) {
+      s_act_list[[actor]] <- s_act_list[[actor]] + 1
+    } else {
+      s_act_list[[actor]] <- 1
+    }
+  }
+}
+s_act_df <- data.frame(Actor = names(s_act_list), Actor_Counts = unlist(s_act_list))
+s_act_df <- s_act_df[order(s_act_df$Actor_Counts, decreasing = TRUE), ]
+top_10_s_act <- head(s_act_df, 10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_s_act,
+  type = "bar",
+  x = ~Actor,
+  y = ~Actor_Counts,
+  text = ~Actor_Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which actors have played more TV Series?",
+    xaxis = list(title = "Actors", titlefont = list(size = 14)),
+    yaxis = list(title = "Number of TV Series played", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+Similarly we will see for movies.
+
+```{r}
+Netflix_movie_act <- Netflix_movie[!is.na(Netflix_movie$Actors), ]
+
+movie_act_list <- strsplit(Netflix_movie_act$Actors, ', ')
+m_act_list <- list()
+for (actors in movie_act_list) {
+  for (actor in actors) {
+    if (actor %in% names(m_act_list)) {
+      m_act_list[[actor]] <- m_act_list[[actor]] + 1
+    } else {
+      m_act_list[[actor]] <- 1
+    }
+  }
+}
+m_act_df <- data.frame(Actor = names(m_act_list), Actor_Counts = unlist(m_act_list))
+m_act_df <- m_act_df[order(m_act_df$Actor_Counts, decreasing = TRUE), ]
+top_10_m_act <- head(m_act_df, 10)
+```
+
+```{r}
+fig <- plot_ly(
+  data = top_10_m_act,
+  type = "bar",
+  x = ~Actor,
+  y = ~Actor_Counts,
+  text = ~Actor_Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which actors have played more Movies?",
+    xaxis = list(title = "Actors", titlefont = list(size = 14)),
+    yaxis = list(title = "Number of Movies played", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Let's see Which are the most rated TV Series for IMDb.
+
+```{r}
+Netflix_series_imdb <- Netflix_series[!is.na(Netflix_series$IMDb.Score), ]
+Netflix_series_imdb <- Netflix_series_imdb[order(Netflix_series_imdb$IMDb.Score, decreasing = TRUE), ]
+top_s_imdb_10_list <- head(Netflix_series_imdb, 10)
+
+
+fig <- plot_ly(
+  data = top_s_imdb_10_list,
+  type = "bar",
+  x = ~Title,
+  y = ~IMDb.Score,
+  text = ~IMDb.Score,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which are the most rated TV Series for IMDb?",
+    xaxis = list(title = "Titles", titlefont = list(size = 14)),
+    yaxis = list(title = "IMDb Score", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+Similarly we will see for movies.
+
+```{r}
+Netflix_movie_imdb <- Netflix_movie[!is.na(Netflix_movie$IMDb.Score), ]
+Netflix_movie_imdb <- Netflix_movie_imdb[order(Netflix_movie_imdb$IMDb.Score, decreasing = TRUE), ]
+top_m_imdb_10_list <- head(Netflix_movie_imdb, 10)
+
+
+fig <- plot_ly(
+  data = top_m_imdb_10_list,
+  type = "bar",
+  x = ~Title,
+  y = ~IMDb.Score,
+  text = ~IMDb.Score,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which are the most rated Movies for IMDb?",
+    xaxis = list(title = "Titles", titlefont = list(size = 14)),
+    yaxis = list(title = "IMDb Score", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Now let's see Which are the most rated TV Series for Rotten Tomatoes.
+
+```{r}
+Netflix_series_rt <- Netflix_series[!is.na(Netflix_series$Rotten.Tomatoes.Score), ]
+Netflix_series_rt <- Netflix_series_rt[order(Netflix_series_rt$Rotten.Tomatoes.Score, decreasing = TRUE), ]
+top_s_rt_10_list <- head(Netflix_series_rt, 10)
+
+fig <- plot_ly(
+  data = top_s_rt_10_list,
+  type = "bar",
+  x = ~Title,
+  y = ~Rotten.Tomatoes.Score,
+  text = ~Rotten.Tomatoes.Score,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which are the most rated TV Series for Rotten Tomatoes?",
+    xaxis = list(title = "Titles", titlefont = list(size = 14)),
+    yaxis = list(title = "Rotten Tomatoes Score", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+Similarly for movies.
+
+```{r}
+Netflix_movie_rt <- Netflix_movie[!is.na(Netflix_movie$Rotten.Tomatoes.Score), ]
+Netflix_movie_rt <- Netflix_movie_rt[order(Netflix_movie_rt$Rotten.Tomatoes.Score, decreasing = TRUE), ]
+top_m_rt_10_list <- head(Netflix_movie_rt, 10)
+
+fig <- plot_ly(
+  data = top_m_rt_10_list,
+  type = "bar",
+  x = ~Title,
+  y = ~Rotten.Tomatoes.Score,
+  text = ~Rotten.Tomatoes.Score,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "Which are the most rated Movies for Rotten Tomatoes?",
+    xaxis = list(title = "Titles", titlefont = list(size = 14)),
+    yaxis = list(title = "Rotten Tomatoes Score", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+## Now let's see the top 15 series with most awards.
+
+```{r}
+Netflix_series_awr <- Netflix_series[!is.na(Netflix_series$Awards.Received), ]
+Netflix_series_awr <- Netflix_series_awr[order(Netflix_series_awr$Awards.Received, decreasing = TRUE), ]
+top_s_awr_15_list <- head(Netflix_series_awr, 15)
+
+top_s_awr_15_df <- head(top_s_awr_15_list, 15)
+ggplot(top_s_awr_15_df, aes(x = Title, y = Awards.Received, fill = Awards.Received)) +
+  geom_bar(stat = 'identity') +
+  scale_fill_gradient(low = "darkred", high = "black") +
+  labs(title = 'Top 15 series with most awards',
+       x = 'Titles',
+       y = 'Awards Received') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+For movies.
+
+```{r}
+Netflix_movie_awr <- Netflix_movie[complete.cases(Netflix_movie$Awards.Received), ]
+Netflix_movie_awr <- Netflix_movie_awr[order(Netflix_movie_awr$Awards.Received, decreasing = TRUE), ]
+top_m_awr_15_list <- head(Netflix_movie_awr, 15)
+
+
+top_m_awr_15_df <- head(top_m_awr_15_list, 15)
+ggplot(top_m_awr_15_df, aes(x = Title, y = Awards.Received, fill = Awards.Received)) +
+  geom_bar(stat = 'identity') +
+  scale_fill_gradient(low = "darkred", high = "black") +
+  labs(title = 'Top 15 series with most awards',
+       x = 'Titles',
+       y = 'Awards Received') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+## Now let's see in which year there have been more Series released.
+
+```{r}
+Netflix_series_rel <- Netflix_series[!is.na(Netflix_series$Released_Year_Net), ]
+
+
+series_rel_list <- Netflix_series_act$Released_Year_Net
+s_rel_list <- table(series_rel_list)
+s_rel_df <- data.frame('Year' = names(s_rel_list), 'Counts' = as.numeric(s_rel_list))
+s_rel_df <- s_rel_df[order(-s_rel_df$Counts), ]
+top_10_s_rel <- head(s_rel_df, 10)
+
+fig <- plot_ly(
+  data = top_10_s_rel,
+  type = "bar",
+  x = ~Year,
+  y = ~Counts,
+  text = ~Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "In which year there have been more TV Series released?",
+    yaxis = list(title = "Number of releases", titlefont = list(size = 14)),
+    xaxis = list(title = "Year", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
+
+For movies.
+
+```{r}
+Netflix_movie_rel <- Netflix_movie[!is.na(Netflix_movie$Released_Year_Net), ]
+
+movie_rel_list <- Netflix_movie_act$Released_Year_Net
+m_rel_list <- table(movie_rel_list)
+m_rel_df <- data.frame('Year' = names(m_rel_list), 'Counts' = as.numeric(m_rel_list))
+m_rel_df <- m_rel_df[order(-m_rel_df$Counts), ]
+top_10_m_rel <- head(m_rel_df, 10)
+
+fig <- plot_ly(
+  data = top_10_m_rel,
+  type = "bar",
+  x = ~Year,
+  y = ~Counts,
+  text = ~Counts,
+  textposition = "auto",
+  marker = list(color = colors_10)
+)
+fig <- fig %>% 
+  layout(
+    title = "In which year there have been more Movies released?",
+    yaxis = list(title = "Number of releases", titlefont = list(size = 14)),
+    xaxis = list(title = "Year", titlefont = list(size = 14)),
+    uniformtext = list(minsize = 8, mode = "hide")
+  )
+fig
+```
